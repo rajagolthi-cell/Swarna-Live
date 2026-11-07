@@ -1,0 +1,18 @@
+# Copy to .dev.vars for local development (`npm run dev`). Never commit .dev.vars.
+# In staging/production these are Cloudflare secrets: `npx wrangler secret put NAME [--env staging]`.
+
+# 32+ random characters. Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+AUTH_PEPPER="<RANDOM_32_PLUS_CHARACTERS>"
+
+# One-time code for creating the first owner. Remove it after setup.
+SETUP_TOKEN="<RANDOM_SETUP_CODE>"
+
+# 32 random bytes, base64. Encrypts Google tokens at rest. Generate: node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+TOKEN_ENCRYPTION_KEY="<BASE64_32_BYTES>"
+
+# Optional: lets the platform administrator provision more businesses. 32+ random characters.
+PLATFORM_ADMIN_TOKEN="<RANDOM_32_PLUS_CHARACTERS>"
+
+# Optional: Google OAuth client (see docs/GOOGLE_SETUP.md)
+GOOGLE_CLIENT_ID="<GOOGLE_OAUTH_CLIENT_ID>"
+GOOGLE_CLIENT_SECRET="<GOOGLE_OAUTH_CLIENT_SECRET>"

@@ -1,0 +1,97 @@
+{
+  // Swarna Live — Cloudflare Worker configuration.
+  // Top level = PRODUCTION (www.swarnalive.com). `env.staging` and `env.local`
+  // have their own D1 database and R2 bucket, so previews and local work can
+  // never touch production data. Replace every <PLACEHOLDER> before deploying.
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "swarna-live",
+  "main": "src/worker/index.ts",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./dist/client",
+    "binding": "ASSETS",
+    "not_found_handling": "single-page-application",
+    // Every request goes through the Worker first so it can add security
+    // headers, redirect swarnalive.com -> www, and keep /api/* JSON-only.
+    "run_worker_first": true
+  },
+  "observability": { "enabled": true },
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [
+    { "pattern": "www.swarnalive.com", "custom_domain": true },
+    { "pattern": "swarnalive.com", "custom_domain": true }
+  ],
+  "vars": {
+    "APP_ENV": "production",
+    "APP_ORIGIN": "https://www.swarnalive.com",
+    "REDIRECT_HOSTS": "swarnalive.com"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "swarna-live-production",
+      "database_id": "<PRODUCTION_D1_DATABASE_ID>",
+      "migrations_dir": "migrations"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "PHOTOS", "bucket_name": "swarna-live-photos-production" }
+  ],
+  // Optional: uncomment after creating the queues (see docs/DEPLOYMENT.md, step 5).
+  // "queues": {
+  //   "producers": [{ "binding": "SYNC_QUEUE", "queue": "swarna-live-sync-production" }],
+  //   "consumers": [{ "queue": "swarna-live-sync-production", "max_batch_size": 5, "max_retries": 3, "dead_letter_queue": "swarna-live-sync-dlq-production" }]
+  // },
+  "triggers": { "crons": ["*/10 * * * *"] },
+
+  "env": {
+    "staging": {
+      "name": "swarna-live-staging",
+      "workers_dev": true,
+      "preview_urls": true,
+      "routes": [],
+      "vars": {
+        "APP_ENV": "staging",
+        "APP_ORIGIN": "https://swarna-live-staging.<YOUR_WORKERS_SUBDOMAIN>.workers.dev",
+        "REDIRECT_HOSTS": ""
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "swarna-live-staging",
+          "database_id": "<STAGING_D1_DATABASE_ID>",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        { "binding": "PHOTOS", "bucket_name": "swarna-live-photos-staging" }
+      ],
+      "triggers": { "crons": ["*/10 * * * *"] }
+    },
+
+    "local": {
+      "name": "swarna-live-local",
+      "workers_dev": true,
+      "routes": [],
+      "vars": {
+        "APP_ENV": "local",
+        "APP_ORIGIN": "http://localhost:8787",
+        "REDIRECT_HOSTS": "",
+        "COOKIE_SECURE": "false"
+      },
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "swarna-live-local",
+          "database_id": "00000000-0000-0000-0000-000000000000",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "r2_buckets": [
+        { "binding": "PHOTOS", "bucket_name": "swarna-live-photos-local" }
+      ],
+      "triggers": { "crons": [] }
+    }
+  }
+}

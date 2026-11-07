@@ -1,20 +1,46 @@
 {
   "name": "swarna-live",
-  "version": "2.0.0",
-  "description": "Swarna Live - loan and customer records manager",
+  "version": "1.0.0",
+  "description": "Swarna Live - jewellery buyback estimates on Cloudflare Workers",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node --no-warnings=ExperimentalWarning server.js",
-    "test": "node --no-warnings=ExperimentalWarning --test test/*.test.js",
-    "cf:dev": "wrangler dev",
-    "cf:setup": "bash scripts/cloudflare-setup.sh",
-    "cf:deploy": "wrangler d1 migrations apply swarna-live-db --remote && wrangler deploy"
+    "dev": "npm run build && wrangler dev --env local",
+    "dev:ui": "vite",
+    "build": "tsc -b && vite build",
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --env local",
+    "db:migrate:staging": "wrangler d1 migrations apply DB --remote --env staging",
+    "db:migrate:production": "wrangler d1 migrations apply DB --remote",
+    "deploy:staging": "npm run build && wrangler d1 migrations apply DB --remote --env staging && wrangler deploy --env staging",
+    "deploy:production": "npm run build && wrangler d1 migrations apply DB --remote && wrangler deploy",
+    "ui-check": "node scripts/ui-check.mjs"
   },
   "engines": {
-    "node": ">=22.5"
+    "node": ">=20"
+  },
+  "dependencies": {
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-router-dom": "^7.9.0"
   },
   "devDependencies": {
-    "wrangler": "^4.40.0"
+    "@cloudflare/vitest-plugin": "^1.6.0",
+    "@cloudflare/workers-types": "^5.20261107.1",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.0.0",
+    "typescript": "~5.9.3",
+    "vite": "^8.0.0",
+    "vitest": "^4.1.0",
+    "wrangler": "^4.158.0"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "esbuild@0.28.2": true,
+    "workerd@1.20260815.1": true,
+    "workerd@1.20261104.1": true
   }
 }

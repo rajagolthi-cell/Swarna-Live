@@ -1,7 +1,13 @@
 node_modules/
-data/
-*.db
-*.db-*
-.env
-.dev.vars
+dist/
 .wrangler/
+.dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+*.log
+.DS_Store
+# Business data never belongs in Git
+*.sqlite
+*.db
+backups/
