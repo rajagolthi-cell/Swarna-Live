@@ -226,3 +226,14 @@ td.nowrap { white-space: nowrap; }
   th, td { padding: 10px; }
   .search input { min-width: 0; flex-basis: 100%; }
 }
+
+/* documents */
+.docs { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 14px; margin-bottom: 18px; }
+.doc { margin: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.doc-thumb { display: grid; place-items: center; aspect-ratio: 4 / 3; background: var(--bg); }
+.doc-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.doc-pdf { font-weight: 700; color: var(--danger); border: 2px solid currentColor; border-radius: 6px; padding: 6px 10px; }
+.doc figcaption { padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; font-size: .88rem; word-break: break-word; }
+.doc figcaption .btn { align-self: flex-start; padding-left: 0; }
+.doc-form { display: grid; grid-template-columns: 1fr 1.4fr auto; gap: 12px; align-items: end; }
+@media (max-width: 760px) { .doc-form { grid-template-columns: 1fr; } }

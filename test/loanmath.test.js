@@ -1,7 +1,6 @@
-'use strict';
-const test = require('node:test');
-const assert = require('node:assert');
-const { computeLoan } = require('../loanmath');
+import test from 'node:test';
+import assert from 'node:assert';
+import { computeLoan } from '../src/loanmath.js';
 
 const loan = { principal: 10000, interest_rate: 2, start_date: '2026-01-01', status: 'active', due_date: '2026-12-31' };
 

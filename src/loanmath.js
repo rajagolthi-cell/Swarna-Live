@@ -1,4 +1,3 @@
-'use strict';
 // Loan balance calculation.
 //
 // Simple interest at `interest_rate` % per month, accrued daily on the
@@ -17,13 +16,13 @@ function round2(n) {
   return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
-function todayIso() {
-  const d = new Date();
-  const p = (n) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+// Today's date (YYYY-MM-DD) in India, whatever time zone the server runs in.
+const dateFmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata', year: 'numeric', month: '2-digit', day: '2-digit' });
+export function todayIso(now = new Date()) {
+  return dateFmt.format(now);
 }
 
-function computeLoan(loan, payments, asOf = todayIso()) {
+export function computeLoan(loan, payments, asOf = todayIso()) {
   const end = loan.status === 'closed' && loan.closed_date ? loan.closed_date : asOf;
   const dailyRate = Number(loan.interest_rate) / 100 / 30;
 
@@ -80,5 +79,3 @@ function computeLoan(loan, payments, asOf = todayIso()) {
     overdue,
   };
 }
-
-module.exports = { computeLoan, todayIso };

@@ -23,8 +23,10 @@ const inr = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR',
 const money = (n) => inr.format(Number(n) || 0);
 const fmtDate = (iso) => {
   if (!iso) return '—';
+  // "YYYY-MM-DD HH:MM:SS" timestamps are stored in UTC; plain dates are local.
   const [y, m, d] = iso.slice(0, 10).split('-').map(Number);
-  return new Date(y, m - 1, d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+  const date = iso.length > 10 ? new Date(iso.replace(' ', 'T') + 'Z') : new Date(y, m - 1, d);
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 };
 const today = () => {
   const d = new Date();
@@ -43,10 +45,11 @@ function toast(msg, isError = false) {
 }
 
 async function api(path, { method = 'GET', body } = {}) {
+  const isForm = body instanceof FormData;
   const res = await fetch('/api' + path, {
     method,
-    headers: body ? { 'Content-Type': 'application/json' } : {},
-    body: body ? JSON.stringify(body) : undefined,
+    headers: body && !isForm ? { 'Content-Type': 'application/json' } : {},
+    body: isForm ? body : body ? JSON.stringify(body) : undefined,
     credentials: 'same-origin',
   });
   let data = null;
@@ -76,7 +79,7 @@ const options = (list, selected, blank = '— Select —') =>
 
 // ---------- state & shell ----------
 
-const state = { user: null, setupNeeded: false };
+const state = { user: null, setupNeeded: false, setupCodeRequired: false };
 
 function shell(content, active) {
   const link = (href, label, key) => h`<a href="${href}" class="${active === key ? 'active' : ''}">${label}</a>`;
@@ -105,6 +108,8 @@ function renderAuth() {
       <form id="auth-form">
         <div class="form-error"></div>
         <div class="fields">
+          ${setup && state.setupCodeRequired ? h`<div><label for="sc">Setup code</label><input id="sc" name="setup_code" autocomplete="off" required>
+            <div class="help">The code you were given when the site was installed.</div></div>` : ''}
           <div><label for="u">Username</label><input id="u" name="username" autocomplete="username" required></div>
           <div><label for="p">Password</label><input id="p" name="password" type="password" autocomplete="${setup ? 'new-password' : 'current-password'}" required ${setup ? raw('minlength="8"') : ''}>
             ${setup ? h`<div class="help">At least 8 characters.</div>` : ''}</div>
@@ -112,7 +117,7 @@ function renderAuth() {
         </div>
       </form>
     </div></div>`.s;
-  $('#u').focus();
+  ($('#sc') || $('#u')).focus();
   $('#auth-form').addEventListener('submit', async (e) => {
     e.preventDefault();
     const err = $('.form-error', e.target);
@@ -123,6 +128,42 @@ function renderAuth() {
     } catch (ex) { err.textContent = ex.message; }
   });
 }
+
+// ---------- documents (ID scans, gold photos) ----------
+
+const fmtSize = (n) => (n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+
+function documentsCard(ownerType, ownerId, docs, suggestions) {
+  return h`<div class="card mt"><div class="card-head"><h2>${ownerType === 'customer' ? 'ID proofs & photos' : 'Photos of pledged items'}</h2></div>
+    <div class="card-pad">
+      ${docs.length ? h`<div class="docs">${docs.map((d) => h`<figure class="doc">
+          <a href="/api/documents/${d.id}/file" target="_blank" rel="noopener" class="doc-thumb">
+            ${d.content_type.startsWith('image/') ? h`<img src="/api/documents/${d.id}/file" alt="${d.label || d.filename}" loading="lazy">` : h`<span class="doc-pdf">PDF</span>`}</a>
+          <figcaption><strong>${d.label || d.filename}</strong><span class="muted small">${fmtSize(d.size)} · ${fmtDate(d.created_at)}</span>
+            <button class="btn link sm" data-action="delete-doc" data-id="${d.id}">Remove</button></figcaption></figure>`)}</div>`
+        : h`<p class="muted">Nothing uploaded yet.</p>`}
+      <form class="doc-form" data-owner-type="${ownerType}" data-owner-id="${ownerId}">
+        <div><label for="doc-label">What is it?</label><input id="doc-label" name="label" list="doc-labels" maxlength="80" placeholder="${suggestions[0]}">
+          <datalist id="doc-labels">${suggestions.map((x) => h`<option value="${x}">`)}</datalist></div>
+        <div><label for="doc-file">File (photo or PDF, max 10 MB)</label><input id="doc-file" name="file" type="file" accept="image/jpeg,image/png,image/webp,image/gif,application/pdf" required></div>
+        <button class="btn primary" type="submit">Upload</button>
+      </form>
+    </div></div>`;
+}
+
+document.addEventListener('submit', async (e) => {
+  const form = e.target.closest('.doc-form');
+  if (!form) return;
+  e.preventDefault();
+  const fd = new FormData(form);
+  fd.set('owner_type', form.dataset.ownerType);
+  fd.set('owner_id', form.dataset.ownerId);
+  const btn = $('button[type=submit]', form);
+  btn.disabled = true;
+  btn.textContent = 'Uploading…';
+  try { await api('/documents', { method: 'POST', body: fd }); toast('File uploaded'); route(); }
+  catch (ex) { toast(ex.message, true); btn.disabled = false; btn.textContent = 'Upload'; }
+});
 
 // ---------- pages ----------
 
@@ -282,6 +323,7 @@ async function pageCustomer(id) {
         <dt>Notes</dt><dd>${dash(c.notes)}</dd>
       </dl></div>
     </div>
+    ${documentsCard('customer', c.id, c.documents, ['Aadhaar front', 'Aadhaar back', 'PAN card', 'Customer photo', 'Voter ID', 'Signature'])}
     <div class="card mt"><div class="card-head"><h2>Loans</h2></div>${loanRows(c.loans, { showCustomer: false })}</div>`, 'customers');
 }
 
@@ -406,7 +448,8 @@ async function pageLoan(id) {
           <td class="num"><button class="btn link sm" data-action="delete-payment" data-id="${p.id}">Remove</button></td></tr>`)}</tbody></table></div>`
         : h`<div class="empty">No payments yet.</div>`}
       <div class="muted small card-foot">Simple interest, counted daily on the principal left (30-day month). Each payment clears interest due first, then principal.</div>
-    </div>`, 'loans');
+    </div>
+    ${documentsCard('loan', l.id, l.documents, ['Gold items photo', 'Pledge receipt', 'Weighing slip'])}`, 'loans');
 }
 
 async function pageSettings() {
@@ -493,6 +536,9 @@ document.addEventListener('click', async (e) => {
         btn.textContent = showing ? 'Show' : 'Hide';
       }
       else if (action === 'print') window.print();
+      else if (action === 'delete-doc') {
+        if (confirm('Remove this file?')) { await api(`/documents/${id}`, { method: 'DELETE' }); toast('File removed'); route(); }
+      }
       else if (action === 'add-payment') paymentDialog(id);
       else if (action === 'close-loan') closeDialog(id);
       else if (action === 'reopen-loan') { await api(`/loans/${id}/reopen`, { method: 'POST' }); toast('Loan reopened'); route(); }
@@ -542,6 +588,7 @@ async function boot() {
   const s = await api('/status');
   state.user = s.user;
   state.setupNeeded = s.setupNeeded;
+  state.setupCodeRequired = s.setupCodeRequired;
   route();
 }
 
