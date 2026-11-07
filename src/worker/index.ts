@@ -93,6 +93,10 @@ export default {
     }
     const res = await env.ASSETS.fetch(req);
     const isHtml = (res.headers.get('content-type') || '').includes('text/html');
+    // A missing script/style/image must be a real 404, not the app's HTML page.
+    if (isHtml && /^\/assets\/|\.(js|css|png|jpe?g|svg|webp|ico|map|txt|json)$/i.test(url.pathname)) {
+      return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain; charset=utf-8', ...securityHeaders(env, false) } });
+    }
     const out = withHeaders(res, securityHeaders(env, isHtml));
     if (isHtml) out.headers.set('Cache-Control', 'no-cache');
     return out;
